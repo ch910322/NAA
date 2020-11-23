@@ -1,0 +1,466 @@
+remote procedure FillBankTransactionsAndReceipts(var record IPConVc);
+remote updating procedure CreateRefundReceipt(record IPVc,var record IPVc,Date);
+remote procedure DistributeInvoicesSClassOnOpenWindowRemote(Longint,var array record IVVc);
+remote function Integer FindBankAccImportBank(string);
+remote procedure PayModeBankAccCustSClassArrayOnOpen(var Array string,var Array string);
+external inner procedure PasteFromSysList(Integer ,Integer);
+external inner procedure In2Period(var string,var Date,var Date);
+remote updating procedure ChangeReceiptCustomerRemote(record RcVc);
+
+
+global
+procedure LitBankImportIClassReportDefaults(Integer wn)
+begin
+  record RcVc RepSpec;
+  record SysFormatBlock SFb;
+
+  BlockLoad(SFb);
+  DeselectWindow(wn,false);
+  GetWindowRecord(wn,RepSpec);
+  ReportDefaults(RepSpec,"BankTRIClass");
+  RepSpec.flags[0] = 1;
+  RepSpec.AccStr = ";";
+  switch (SFb.dateOrder) begin
+    case 0:
+      RepSpec.Stext = "MM-DD-YYYY";
+    case 1:
+      RepSpec.Stext = "DD-MM-YYYY";
+    case 2:
+      RepSpec.Stext = "YYYY-MM-DD";
+  end;
+  RepSpec.FirstAcc = ",";
+  RepSpec.LastAcc = "";
+  RepSpec.ArtMode = 2;
+  RepSpec.flags[20] = kReceiptBankSwedBankLithuania;
+  RepSpec.f1 = StringFromSet(621,0); 
+  RepSpec.f2 = StringFromSet(621,0); 
+  RepSpec.f3 = StringFromSet(621,0); 
+  RepSpec.f4 = StringFromSet(621,0); 
+  RepSpec.f5 = StringFromSet(621,0); 
+  RepSpec.f6 = StringFromSet(621,0); 
+  RepSpec.f7 = StringFromSet(621,0); 
+  RepSpec.f8 = StringFromSet(621,0); 
+  RepSpec.f9 = StringFromSet(621,0); 
+  RepSpec.f10 = StringFromSet(621,0); 
+  PutWindowRecord(wn,RepSpec);
+  SelectWindow(wn);
+  return;
+end;
+
+global
+function boolean LitBankImportIClassAfterEditField(Integer wn,string fieldname,Integer fn,Integer rownr,Integer changed)
+BEGIN
+  Boolean res;
+  record RcVc RepSpec;
+  record SysFormatBlock SFb;
+  Integer stmt;
+
+  DeselectWindow(wn,true);
+  GetWindowRecord(wn,RepSpec);
+  if (fieldname=="f20") then begin
+    stmt = FindBankAccImportBank(RepSpec.f20);
+    if (stmt>=0) then begin
+      RepSpec.flags[20] = stmt;
+    end;
+  end;
+  PutWindowRecord(wn,RepSpec);
+  SelectWindow(wn);
+  return;
+end;
+
+
+global
+procedure ReceiptConnectionWClassOnOpenWindow(Integer wn)
+begin
+  record IPConVc PCr;
+
+  GetWindowRecord(wn,PCr);
+  threadremote.FillBankTransactionsAndReceipts(PCr);
+  PutWindowRecord(wn,PCr);
+
+  return;
+end;
+
+function Boolean ReceiptConnectionWClassUpdateTransactions(Integer wn,Integer changed)
+begin
+  Boolean res;
+  record IPConVc PCr;
+  
+  if (changed!=0) then begin
+    DeselectWindow(wn,true);
+    GetWindowRecord(wn,PCr);
+    threadremote.FillBankTransactionsAndReceipts(PCr);
+    PutWindowRecord(wn,PCr);
+  end;
+
+  ReceiptConnectionWClassUpdateTransactions = res;
+  return;
+end;
+
+global
+function Boolean ReceiptConnectionWClassPeriodEFAfter(Integer wn,Integer changed)
+begin
+  Date d1,d2;
+  string 30 tstr;
+  record IPConVc PCr;
+  
+  if (changed!=0) then begin
+    DeselectWindow(wn,true);
+    GetWindowRecord(wn,PCr);
+    In2Period(PCr.Period,d1,d2)
+    //PCr.Period = tstr;
+    threadremote.FillBankTransactionsAndReceipts(PCr);
+    PutWindowRecord(wn,PCr);
+  end;
+
+  ReceiptConnectionWClassPeriodEFAfter = false;
+  return;
+end;
+
+global
+function Boolean ReceiptConnectionWClassAfterEditField(Integer wn,string fieldname,Integer fn, Integer rownr,Integer changed)
+begin
+  Boolean res;
+
+  if (changed) then begin
+    switch (fieldname) begin
+      case "Period": 
+        res = ReceiptConnectionWClassPeriodEFAfter(wn,changed);
+      case "CustCode": 
+        res = ReceiptConnectionWClassUpdateTransactions(wn,changed);
+      case "Comment":
+        res = ReceiptConnectionWClassUpdateTransactions(wn,changed);
+      case "IVNr": 
+        res = ReceiptConnectionWClassUpdateTransactions(wn,changed);
+      case "PMCode": 
+        res = ReceiptConnectionWClassUpdateTransactions(wn,changed);
+    end;
+  end;
+    
+  ReceiptConnectionWClassAfterEditField = res;
+  return;
+end;
+
+global
+procedure ReceiptConnectionOpenReceiptDsm()
+begin
+  Integer wn,rw;
+  record IPConVc PCr;
+  row IPConVc PCrw;
+  record IPVc IPr;
+
+  wn = CurWindow;
+  GetWindowRecord(wn,PCr);
+  rw = WindowActiveRow(wn);
+  if (rw>-1) then begin
+    MatRowGet(PCr,rw,PCrw); 
+    if (PCrw.IPNr>0) then begin
+      IPr.SerNr = PCrw.IPNr;
+      if (ReadFirstMain(IPr,1,true)) then begin
+        OpenWindow("IPDClass",1,0,"","",IPr);      
+      end;
+    end else begin
+      RecordNew(IPr);
+      IPr.TransDate = PCrw.TransDate;
+      OpenWindow("IPDClass",1,0,"","",IPr);      
+    end;
+  end;
+
+  return;
+end;
+
+global
+updating procedure ReceiptConnectionOKReceiptDsm()
+begin
+  Integer wn,rw;
+  record IPConVc PCr;
+  row IPConVc PCrw;
+  record IPVc IPr,oldIPr;
+
+  wn = CurWindow;
+  GetWindowRecord(wn,PCr);
+  rw = WindowActiveRow(wn);
+  if (rw>-1) then begin
+    MatRowGet(PCr,rw,PCrw); 
+    if (PCrw.IPNr>0) then begin
+      IPr.SerNr = PCrw.IPNr;
+      if (ReadFirstMain(IPr,1,true)) then begin
+        RecordCopy(oldIPr,IPr);
+        if (IPr.OKFlag==1) then begin
+          IPr.OKFlag = 0;
+        end else begin
+          IPr.OKFlag = 1;
+        end;
+        RecordUpdate(oldIPr,IPr,true);
+        threadremote.FillBankTransactionsAndReceipts(PCr);
+        PutWindowRecord(wn,PCr);
+      end;
+    end;
+  end;
+
+  return;
+end;
+
+global
+updating procedure ReceiptConnectionRefundDsm()
+begin
+  Integer wn,rw;
+  record IPConVc PCr;
+  row IPConVc PCrw;
+  record IPVc IPr,nIPr;
+  record RcVc RepSpec;
+
+  wn = CurWindow;
+  GetWindowRecord(wn,PCr);
+  rw = WindowActiveRow(wn);
+  if (rw>-1) then begin
+    MatRowGet(PCr,rw,PCrw); 
+    if (PCrw.IPNr>0) then begin
+      IPr.SerNr = PCrw.IPNr;
+      if (ReadFirstMain(IPr,1,true)) then begin
+        RepSpec.long1 = IPr.SerNr;
+        OpenWindow("ReceiptConnectionRefundWClass",1,0,"","",RepSpec);
+      end;
+    end;
+  end;
+  
+
+  return;
+end;
+
+global
+updating procedure ReceiptConnectionRefundDo()
+begin
+  Integer wn,rw,twn;
+  record IPConVc PCr;
+  row IPConVc PCrw;
+  record IPVc IPr,nIPr;
+  record RcVc RepSpec;
+
+  wn = CurWindow;
+  DeselectWindow(wn,true);
+  GetWindowRecord(wn,RepSpec);
+  if (RepSpec.long1>0) then begin
+    IPr.SerNr = RepSpec.long1;
+    if (ReadFirstMain(IPr,1,true)) then begin
+      CreateRefundReceipt(IPr,nIPr,RepSpec.d1);
+      CloseWindow(wn);
+      twn = FindWindow("ReceiptConnectionWClass");
+      if (twn>0) then begin
+        GetWindowRecord(twn,PCr);
+        threadremote.FillBankTransactionsAndReceipts(PCr);
+        PutWindowRecord(twn,PCr);
+      end;
+      OpenWindow("IPDClass",1,0,"","",nIPr);
+    end;
+  end;
+  
+
+  return;
+end;
+
+global
+procedure ReceiptConnectionChangeCustDsm()
+begin
+  Integer wn,rw,nwn;
+  record IPConVc PCr;
+  row IPConVc PCrw;
+  record IPVc IPr,nIPr;
+  record RcVc RepSpec;
+  row IPVc IPrw;
+
+  wn = CurWindow;
+  GetWindowRecord(wn,PCr);
+  rw = WindowActiveRow(wn);
+  if (rw>-1) then begin
+    MatRowGet(PCr,rw,PCrw); 
+    if (PCrw.IPNr>0) then begin
+      IPr.SerNr = PCrw.IPNr;
+      if (ReadFirstMain(IPr,1,true)) then begin
+        RepSpec.long1 = IPr.SerNr;
+        MatRowGet(IPr,0,IPrw);
+        RepSpec.f1 = IPrw.CustCode;
+        RepSpec.f2 = IPrw.CustName;
+        nwn = OpenWindow("ReceiptConnectionChangeCustWClass",0,0,"","",RepSpec);
+        WindowFieldGoto(nwn,RepSpec,-1,"f4",true);
+
+      end;
+    end;
+  end;
+
+  return;
+end;
+
+
+global
+updating procedure ReceiptConnectionChangeCustWClassSave()
+begin
+  Integer wn,rw,twn;  
+  record RcVc RepSpec;
+  record IPConVc PCr;
+
+
+  wn = CurWindow;
+  DeselectWindow(wn,true);
+  GetWindowRecord(wn,RepSpec);
+  ChangeReceiptCustomerRemote(RepSpec);
+  CloseWindow(wn);
+  twn = FindWindow("ReceiptConnectionWClass");
+  if (twn>0) then begin
+    GetWindowRecord(twn,PCr);
+    threadremote.FillBankTransactionsAndReceipts(PCr);
+    PutWindowRecord(twn,PCr);
+  end;
+
+  return;
+end;
+
+global
+function Boolean PayModeBankAccCustSClassOnOKWindow(Integer wn)
+begin
+  PasteFromSysList(wn,-2);
+  PayModeBankAccCustSClassOnOKWindow = false;
+  return;
+end;
+
+global
+function Boolean PayModeBankAccCustSClassOnOpenWindow(Integer wn)
+begin
+  Array string 255 acode,acomment;
+  Integer i;
+  
+  PayModeBankAccCustSClassArrayOnOpen(acode,acomment);
+  for (i=0;i<acode.length;i=i+1) begin
+    if (nonblank(acode[i])) then begin
+      AddListRow(wn,"PayModeBankAccClass",1,acode[i],0);
+      AddListData(wn,"PayModeBankAccClass","bankacc",acode[i]);
+      AddListData(wn,"PayModeBankAccClass","pmname",acomment[i]);
+    end;
+  end;
+  PayModeBankAccCustSClassOnOpenWindow = false;
+  return;
+end;
+
+global
+function Boolean ReceiptConnectionWClassArtModeButtonAction(Integer wn,Integer value)
+begin
+  record IPConVc PCr;
+
+  GetWindowRecord(wn,PCr);
+  PCr.ArtMode = value;
+  threadremote.FillBankTransactionsAndReceipts(PCr);
+  PutWindowRecord(wn,PCr);
+
+  ReceiptConnectionWClassArtModeButtonAction = true;
+  return;
+end;
+global
+function Boolean ReceiptConnectionWClassPaidStatButtonAction(Integer wn,Integer value)
+begin
+  record IPConVc PCr;
+
+  GetWindowRecord(wn,PCr);
+  PCr.PaidStat = value;
+  threadremote.FillBankTransactionsAndReceipts(PCr);
+  PutWindowRecord(wn,PCr);
+
+  ReceiptConnectionWClassPaidStatButtonAction = true;
+  return;
+end;
+
+
+global
+function LongInt IPVcRecordUpdateClient(LongInt wn,var record IPVc IPr,record IPVc IP2r,LongInt stat,LongInt long4)
+begin
+  LongInt res;
+  record IPConVc PCr;
+  Integer pwn;
+
+  pwn = FindWindow("ReceiptConnectionWClass");
+  if (pwn>0) then begin
+    GetWindowRecord(pwn,PCr);
+    threadremote.FillBankTransactionsAndReceipts(PCr);
+    PutWindowRecord(pwn,PCr);
+  end;
+
+  res = inner.IPVcRecordUpdateClient(wn,IPr,IP2r,stat,long4);
+
+  IPVcRecordUpdateClient = res;
+  return;
+end;
+
+global
+procedure ReceiptConnectionCUPerDsm()
+begin
+  record PeriodBlock PeriodRec;
+  row PeriodBlock Periodrw;
+  Date startdate,enddate;
+  record RcVc RepSpec;
+  record IPConVc PCr;
+  row IPConVc PCrw;
+  record IPVc IPr,nIPr;
+  Integer rw,wn;
+
+  wn = CurWindow;
+  GetWindowRecord(wn,PCr);
+  rw = WindowActiveRow(wn);
+  if (rw>-1) then begin
+    MatRowGet(PCr,rw,PCrw); 
+    if (nonblank(PCrw.CustCodeRow)) then begin
+
+      BlockLoad(PeriodRec);
+      if (MatRowCnt(PeriodRec)>0) then begin
+        MatRowGet(PeriodRec,0,Periodrw);
+        startdate = Periodrw.FromDate;
+        enddate = Periodrw.ToDate;
+      end;
+
+      
+      RepSpec.repname = "CUPerRn";
+      ReportDefaults(RepSpec,"CUPerRClass");
+      RepSpec.Media = mtScreen;
+      RepSpec.sStartDate = startdate;
+      RepSpec.sEndDate = enddate;
+      RepSpec.ArtMode = 1;
+      RepSpec.f1 = PCrw.CustCodeRow;
+      RunReport(RepSpec,0);
+    end;
+  end;
+
+  return;
+end;
+
+function Boolean ReceiptConnectionChangeCustWClassSum4EFAfter(Integer wn,Integer rownr,Integer changed)
+begin
+  record RcVc RepSpec;
+  record CUVc CUr;
+
+  if (changed!=0) then begin
+    GetWindowRecord(wn,RepSpec);
+    CUr.Code = RepSpec.f4;
+    if (ReadFirstMain(CUr,1,true)) then begin
+      RepSpec.f5 = CUr.Name;
+    end;
+    PutWindowRecord(wn,RepSpec);
+  end;
+  
+
+  ReceiptConnectionChangeCustWClassSum4EFAfter = false;
+  return;
+end;
+
+global
+function Boolean ReceiptConnectionChangeCustWClassAfterEditField(Integer wn,string fieldname,Integer fn, Integer rownr,Integer changed)
+begin
+  Boolean res;
+
+  if (changed) then begin
+    switch (fieldname) begin
+      case "f4": 
+        res = ReceiptConnectionChangeCustWClassSum4EFAfter(wn,rownr,changed);
+    end;
+  end;
+    
+  ReceiptConnectionChangeCustWClassAfterEditField = res;
+  return;
+end;

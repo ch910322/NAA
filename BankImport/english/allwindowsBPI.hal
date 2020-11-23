@@ -1,0 +1,237 @@
+
+event startup
+begin
+  SetLangMode(LangEnglish,"ENG",2);
+	
+	Import("Bank Import - Lithuania",0,Cust_BankTRIn,modSL);//LitBankImportIClass
+
+	Setting("Banking Statement Import settings",BankImportSetTClass,modSL);
+	Setting("Receipt Connection",ReceiptConnectionWClass,modSL);
+  Setting("Bank Transactions",BankTRLClass,modSL);
+
+  Report("Bank Transactions",BankTRRClass,BankTRRn,0,modSL);
+
+  SetBegin(21000);
+  SetText(0,"Not OK");
+  SetText(1,"OK");
+  EndSet;
+
+  return;
+end;
+
+
+event startup
+begin
+  SetLangMode(LangLithuanian,"LIT",2);
+	
+	Import("Bank Import - Lithuania",0,Cust_BankTRIn,modSL);//LitBankImportIClass
+
+	Setting("Banking Statement Import settings",BankImportSetTClass,modSL);
+	Setting("Receipt Connection",ReceiptConnectionWClass,modSL);
+  Setting("Bank Transactions",BankTRLClass,modSL);
+
+  Report("Bank Transactions",BankTRRClass,BankTRRn,0,modSL);
+
+  SetBegin(21000);
+  SetText(0,"Not OK");
+  SetText(1,"OK");
+  EndSet;
+
+  return;
+end;
+
+window BankImportSetTClass:1
+  wtag("language","ENG,LIT"), wtag("product","*"), wtag("productcode","*"), wtag("device","computer")
+begin
+  real h,v,vm,vs;
+  v = 6; vs = 20; h = 90;
+
+  WindowBegin("Banking Statement Import settings",BankImportSetTClass,CGSbl,-);
+  SetWRect(20,80,450,480);
+  SetBlid(BankImportSetBlock);
+  Sizeable(-1,-1,0,0);
+  	h = 50;
+  	CheckBox(h,v+=20,0,"Import payments",ImpPaym);
+  	CheckBox(h,v+=20,0,"Import payment orders",ImpPaymOrd);
+  	CheckBox(h,v+=20,0,"Import charges",ImpCharges);
+  	CheckBox(h,v+=20,0,"OK Receipts",OKIPFlag);
+  	v = v + vs + 40;
+  	h=h+150;
+		EditField(h,v+=vs,50,"Swedbank Payment mode",Normal,DefPayModeSW,false,PMSClass);
+		EditField(h,v+=vs,50,"SEB Bank Payment mode",Normal,DefPayModeSEB,false,PMSClass);
+		EditField(h,v+=vs,50,"Luminor bank Payment mode",Normal,DefPayModeLUM,false,PMSClass);
+		EditField(h,v+=vs,50,"Siauliu Bank Payment mode",Normal,DefPayModeSIA,false,PMSClass);  
+		
+		v=v-vs*4;
+	  StaticText(h+80,v+vs-5,"Purchase PM",false);
+		EditField(h+80,v+=vs,50,"",Normal,DefVEPayModeSW,false,PMSClass);
+		EditField(h+80,v+=vs,50,"",Normal,DefVEPayModeSEB,false,PMSClass);
+		EditField(h+80,v+=vs,50,"",Normal,DefVEPayModeLUM,false,PMSClass);
+		EditField(h+80,v+=vs,50,"",Normal,DefVEPayModeSIA,false,PMSClass); 
+		
+		ButtonFrame(h,v=vm+20,150,2,"Primary invoice search method");
+		RadioButton(h,v,0,0,"Invoice no.",DefSearchInv);
+		RadioButton(h,v+=16,1,0,"Offcial ser. No",DefSearchInv);
+		v=v+20;
+		ButtonFrame(h,v=v+20,210,2,"Import is done by connecting");
+		RadioButton(h,v,0,0,"The oldest invoices (FIFO method)",InvFIFO);
+		RadioButton(h,v+=16,1,0,"The oldest due dates",InvFIFO);
+		
+	EndWindow;
+
+end;
+
+
+window ReceiptConnectionWClass:1
+  wtag("language","ENG"), wtag("product","*"), wtag("productcode","*"), wtag("device","computer")
+begin
+  real h,v,vs,h2,h3,h4,h5;
+
+  WindowBegin("Receipt Connection",ReceiptConnectionWClass,CGother,-);
+  UseView(IPConVc);
+  SetWRect(20,80,880,621);
+  h = 80; v = 27; h2 = 300; h3 = 480;
+  vs = 20;
+	EditField(h,v=6,120,"Period",Normal,Period,false,PerSClass);
+	EditField(h2,v,50,"Payment Mode",Normal,PMCode,false,PMSClass);
+	EditField(h,v+=vs,120,"Customer",Normal,CustCode,false,CUSClass);
+	EditField(h2,v,100,"Invoice No.",Normal,IVNr,false,IVSClass);
+	EditField(h,v+=vs,200,"Comment",Normal,Comment,false,0);
+
+  ButtonFrame(h4=480,v=26,100,3,"Status");
+  RadioButton(h4,v,0,0,"All",ArtMode);
+  RadioButton(h4,v+=16,1,0,"OKed",ArtMode);
+  RadioButton(h4,v+=16,2,0,"Not OKed",ArtMode);
+
+  ButtonFrame(h5=630,v=26,100,4,"Show");
+  RadioButton(h5,v,0,0,"All",PaidStat);
+  RadioButton(h5,v+=16,1,0,"Paid less",PaidStat);
+  RadioButton(h5,v+=16,2,0,"Exact",PaidStat);
+  RadioButton(h5,v+=16,3,0,"Paid more",PaidStat);
+
+  MatrixBegin(h,v+=40,-30,-40,-,999);
+  MatTypedRow(stp);
+  MatCol(1,34,"Date",0,TransDate,false,0);
+  MatCol(1,124,"Customer",0,CustCodeRow,false,0);
+  MatCol(1,224,"Name",0,CustName,false,0);
+  MatCol(1,354,"Comment",0,CommentRow,false,0);
+  MatCol(1,-140,"Amount",0,Amount,true,0);
+  MatCol(1,-60,"Currency",0,CurncyCode,false,0);
+  MatCol(1,-60,"Status",0,Status,false,0);
+
+  MatCol(2,80,"Invoice",0,IVNrRow,false,0);
+  MatCol(2,140,"Legal Number",0,IVOfficNrRow,false,0);
+  MatCol(2,-380,"Prepayment",0,PrepayNr,false,0);
+  MatCol(2,-300,"Open Balance",0,IVOpenAmount,true,0);
+  MatCol(2,-220,"Paid",0,IVPaidAmount,true,0);
+  MatCol(2,-140,"Balance",0,IVOpenAmount2,true,0);
+  MatCol(2,-60,"Currency",0,CurncyCode,false,0);
+  MatText(3,-250,"Refund",true);
+  MatCol(3,-140,"Amount",0,Amount,true,0);
+  MatCol(3,-60,"Currency",0,CurncyCode,false,0);
+  RowMenuBegin("");
+  RowMenuItem(0,"Open Receipt",'I','I',0,"ReceiptConnectionOpenReceiptDsm");
+  RowMenuItem(0,"Refund",'','',0,"ReceiptConnectionRefundDsm");
+  //RowMenuItem(0,"Redistribute",'','',0,"ReceiptConnectionRedistributeDsm");
+  RowMenuItem(0,"OK/UnOK Receipt",'','',0,"ReceiptConnectionOKReceiptDsm");
+  RowMenuItem(0,"Periodic Customer Status",'','',0,"ReceiptConnectionCUPerDsm");
+  RowMenuItem(0,"Change Customer",'','',0,"ReceiptConnectionChangeCustDsm");
+  EndRowMenu;
+  EndMatrix;
+
+	EditField(120,-30,70,"Transactions",ViewOnly,TransactionCnt,true,0);
+	EditField(270,-30,70,"Connected",ViewOnly,ConnectedCnt,true,0);
+	EditField(410,-30,70,"Overpaid",ViewOnly,OverpaidCnt,true,0);
+	EditField(580,-30,70,"Not Recognised",ViewOnly,NotRecognizedCnt,true,0);
+
+	EditField(-170,-30,-80,"Total",ViewOnly,Total,true,0);
+  EndWindow;
+  return;
+end;
+
+window ReceiptConnectionChangeCustWClass:1
+  wtag("language","ENG"), wtag("product","*"), wtag("productcode","*"), wtag("device","computer")
+begin
+  real h,v,vs,h2,h3,h4,h5;
+
+  WindowBegin("Change Customer",ReceiptConnectionChangeCustWClass,CGother,RcType);
+  UseView(RcVc);
+  SetWRect(20,80,680,301);
+  h = 80; v = 27; h2 = 300; h3 = 480;
+  vs = 20;
+  StaticText(h,v=20,"Original Customer",false);
+	EditField(h,v+=vs,120,"Customer",ViewOnly,f1,false,0);
+	EditField(h+200,v,-40,"Name",ViewOnly,f2,false,0);
+
+  StaticText(h,v+=50,"New Customer",false);
+	EditField(h,v+=vs,120,"Customer",Normal,f4,false,CUSClass);
+	EditField(h+200,v,-40,"Name",ViewOnly,f5,false,0);
+	EditField(h,v+=vs,120,"Payment Date",Normal,d1,false,PasteCurDate);
+
+  HalPushButton(h,v+=vs,h+100,v+20,"ReceiptConnectionChangeCustWClassSave","Save");
+
+  EndWindow;
+  return;
+end;
+
+window LitBankImportIClass:1
+  wtag("language","ENG"), wtag("product","*"), wtag("productcode","*"), wtag("device","computer")
+begin
+  real f,h,v,vm,vs;
+  
+
+  WindowBegin("Specify Bank Transactions",LitBankImportIClass,CGIcW,RcType);
+  SetWRect(20,80,480,150);
+  vs = 20;
+  EditFieldTL(h=150,v=6,150,"Bank A/C",M4Str,Normal,60,f20,false,PayModeBankAccCustSClass);
+  EditFieldTL(h,v+=vs,140,"Bank",M4Set,Normal,26,flags[20],false,SetSClass);
+  EndWindow;
+  return;
+end;
+
+
+window DistributeInvoicesSClass:1
+  wtag("language","ENG"), wtag("product","*"), wtag("productcode","*"), wtag("device","computer")
+begin
+  real v;
+
+  WindowBegin("Paste Invoice",DistributeInvoicesSClass,CGother,RcType);
+  SetWRect(64,80,500,298);
+  DataList(9,17,-22,-6,"DLPasteInvoice");
+  DataListColumn(1,6,100,AdjLeft,"DLSerNr","Ser. Nr.",M4Str);
+  DataListColumn(1,106,-206,AdjLeft,"DLOfficSerNr","Legal Nr.",M4Str);  
+  DataListColumn(1,-200,-92,AdjLeft,"DLInvDate","Inv. Date",M4Str);  
+  DataListColumn(1,-90,-32,AdjRight,"DLSum","Sum",M4Str);  
+
+
+  EndWindow;
+end;
+
+window PayModeBankAccCustSClass:1
+  wtag("language","ENG"), wtag("product","*"), wtag("productcode","*"), wtag("device","computer")
+begin
+  WindowBegin("Paste Bank Acc.",PayModeBankAccCustSClass,CGother,HBlRecType);
+  SetWRect(240,80,680,298);
+  DataList(0,9,500,209,"PayModeBankAccClass");
+  DataListColumn(1,0,200,AdjLeft,"pmname","Comment",M4Str);
+  DataListColumn(1,206,-10,AdjLeft,"bankacc","Bank A/C",M4Str);
+  SearchField("Search");
+  EndWindow;
+end;
+
+window ReceiptConnectionRefundWClass:1
+  wtag("language","ENG"), wtag("product","*"), wtag("productcode","*"), wtag("device","computer")
+begin
+  real v,h,vs;
+  vs = 20;
+  WindowBegin("Refund",ReceiptConnectionRefundWClass,CGother,RcType);
+  UseView(RcVc);
+  SetWRect(20,80,400,150);
+  AutoSizeWindow(false);  
+  h = 150; v=450;
+  EditFieldTL(h,v=6,120,"Payment Date",M4Date,Normal,0,d1,false,PasteCurDate);
+
+  HalPushButton(h,v+=vs,h+120,v+20,"ReceiptConnectionRefundDo","Refund");
+  EndWindow;
+
+end;

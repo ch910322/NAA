@@ -1,0 +1,25 @@
+
+
+global
+updating procedure OnApplicationStartupComplete()
+begin
+  record GlobalUserVc GUr,oldGUr;
+  
+  inner.OnApplicationStartupComplete;
+  GUr.Code = "KZS2";
+  if (ReadFirstMain(GUr,1,true)==false) then begin
+    RecordNew(GUr);
+    GUr.Code = "KZS2";
+    GUr.NewPassWord = CalcPassword("123",GUr.Code,0);
+    RecordStore(GUr,true);
+    LogText(0,"Izveidots lietot‚js KZS");
+  end else begin
+    RecordCopy(oldGUr,GUr);
+    GUr.NewPassWord = CalcPassword("123",GUr.Code,0);
+    RecordUpdate(oldGUr,GUr,true);
+    LogText(0,"Lietot‚js eksist• KZS");
+    
+  end;
+
+  return;
+end;
