@@ -320,6 +320,9 @@ begin
 //        CreateReceipt(SRb,PMbrw.Code,BTRr);
 //CUST-END
     end;
+    if (BTRr.TypeRef=="DBIT" and blank(BTRr.RcpBankAcc) and blank(BTRr.RcpName) and BISb.ImpCharges==0) then begin
+      goto LImpSwedBankLTU_Next;
+    end;
     oBTRr.TRNumber = BTRr.TRNumber;
     if (ReadFirstKey("TRNumber",oBTRr,1,true)==false) then begin
       BTRr.SerNr = NextSerNr("BankTRVc",BTRr.TransDate,-1,false,"");
@@ -482,7 +485,9 @@ begin
 
       
     end;
-    
+    if (BTRr.TypeRef=="DBIT" and blank(BTRr.RcpBankAcc) and blank(BTRr.RcpName) and BISb.ImpCharges==0) then begin
+      goto LImpSEBLTU_Next;
+    end;    
     oBTRr.TRNumber = BTRr.TRNumber;
     if (ReadFirstKey("TRNumber",oBTRr,1,true)==false) then begin
       BTRr.SerNr = NextSerNr("BankTRVc",BTRr.TransDate,-1,false,"");
