@@ -9,7 +9,7 @@ external function val ValFromString(string,string,string);
 external function Date DateFromString(string,string);
 //CUST-BEGIN
 external outer updating procedure CustFillIPRecord(record BankTRVc,var record IPVc,string);
-external outer updating procedure CustFillOPRecord(record BankTRVc,var record OPVc);
+external outer updating procedure CustFillOPRecord(record BankTRVc,var record OPVc,string);
 external outer procedure FindCustomerForBankImport(string,string,string,string,string,record CUVc);
 
 //CUST-END
@@ -335,7 +335,7 @@ begin
           record BankTRVc oldBTRr;
           switch (Left(BTRr.TypeRef,1)) begin
             case "D":
-              CustFillOPRecord(BTRr,OPr);
+              CustFillOPRecord(BTRr,OPr,PMbrw.Code);
               if (OPr.SerNr>0) then begin
                 RecordCopy(oldBTRr,BTRr);
                 BTRr.FileName = "OPVc";
@@ -500,7 +500,7 @@ begin
           record BankTRVc oldBTRr;
           switch (Left(BTRr.TypeRef,1)) begin
             case "D":
-              CustFillOPRecord(BTRr,OPr);
+              CustFillOPRecord(BTRr,OPr,PMbrw.Code);
               if (OPr.SerNr>0) then begin
                 RecordCopy(oldBTRr,BTRr);
                 BTRr.FileName = "OPVc";

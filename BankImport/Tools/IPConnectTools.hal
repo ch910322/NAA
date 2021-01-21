@@ -445,7 +445,7 @@ end;
 
 
 global
-updating procedure CustFillOPRecord(record BankTRVc BTr,var record OPVc OPr)
+updating procedure CustFillOPRecord(record BankTRVc BTr,var record OPVc OPr,string paymode)
 begin
   val remsum;
   record CUVc CUr;
@@ -459,12 +459,13 @@ begin
     OPr.TransDate = BTr.TransDate;	 
     OPr.PayDate = BTr.RcpTransDate;	 
     OPr.SerNr = NextSerNr("OPVc",OPr.TransDate,-1,false,"");		
-
     FindCustomerForBankImport("",BTr.RcpRegNr1,BTr.RcpVATNr,BTr.RcpBankAcc,BTr.RcpName,CUr);
     instr = BPI_ParseInvStr(BTr.RcpReference);
     remsum = BTr.Sum;
 
     BankFillOProws(OPr,CUr.Name,BTr.CurncyCode,remsum,CUr.Code,nonblank(CUr.Code),instr,BTr.RcpReference);
+    OPr.PayMode = paymode;
+
     if (MatRowCnt(OPr)>0) then begin
       RecordInsert(OPr,true);
     end;
