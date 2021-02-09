@@ -295,7 +295,7 @@ begin
         BTRr.RcpRegNr1 = XmlGet(xdata,ntrykey & "NtryDtls/TxDtls/RltdPties/Cdtr/Id/OrgId/Othr/Id");
         BTRr.RcpReference = XmlGet(xdata,ntrykey & "NtryDtls/TxDtls/RmtInf/Ustrd");
         type = XmlGet(xdata,ntrykey & "BkTxCd/Domn/Fmly/SubFmlyCd");
-        if (BISb.ImpCharges==0 and type=="COMM") then begin
+        if (BISb.ImpCharges==0 and (type=="COMM" or type=="FEES")) then begin
           goto LImpSwedBankLTU_Next;
         end;
       case "C":
@@ -433,7 +433,7 @@ begin
     end;
     //Paysera support end
     type = XmlGet(xdata,ntrykey & "BkTxCd/Domn/Fmly/SubFmlyCd");
-    if (BISb.ImpCharges==0 and type=="COMM") then begin
+    if (BISb.ImpCharges==0 and (type=="COMM" or type=="FEES")) then begin
       goto LImpSEBLTU_Next;
     end;
 
